@@ -3,18 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
     Activity,
     Ambulance,
-    Bell,
     Camera,
-    ChevronDown,
-    ChevronRight,
-    Clock3,
-    Hospital,
     House,
-    MapPin,
     Mic,
     Route,
     Save,
-    ShieldCheck,
     Trash2,
     UserRound,
     Wifi,
@@ -22,13 +15,17 @@ import {
     Pencil,
     Phone,
 } from 'lucide-react'
-
+import HomePage from './HomePage'
+import RoutePage from './RoutePage'
 // ==============================
 // TYPES
 // ==============================
 
+
 type SpeechResult = {
-    0: { transcript: string }
+    0: {
+        transcript: string
+    }
 }
 
 type SpeechEvent = {
@@ -39,7 +36,7 @@ type SpeechRecognitionLike = {
     lang: string
     interimResults: boolean
     onresult: ((event: SpeechEvent) => void) | null
-    onerror: (() => void) | null
+    onerror: ((event?: unknown) => void) | null
     onend: (() => void) | null
     start: () => void
     stop: () => void
@@ -312,11 +309,13 @@ function DriverPage() {
     // VOICE REPORTING
     // ==============================
 
-    const startVoiceReport = () => {
 
+    const startVoiceReport = () => {
+        // Stop recording when microphone is pressed again
         if (listening) {
             recognitionRef.current?.stop()
             setListening(false)
+            setVoiceMessage('Recording stopped.')
             return
         }
 
@@ -328,27 +327,41 @@ function DriverPage() {
 
         if (!SpeechRecognition) {
             setVoiceMessage(
-                'Voice recognition is not supported. Please use Chrome.'
+                'Voice recognition is not supported. Please use Google Chrome.'
             )
             return
         }
 
         const recognition = new SpeechRecognition()
 
-        recognition.lang = 'en-IN'
+        // Telugu language recognition
+        recognition.lang = 'te-IN'
+
+        // Return the final transcript
         recognition.interimResults = false
 
         recognition.onresult = event => {
-            const transcript = event.results[0][0].transcript
+            const transcript = event.results[0]?.[0]?.transcript?.trim()
+
+            if (!transcript) {
+                setVoiceMessage('No speech detected. Please try again.')
+                return
+            }
 
             setPatientReport(transcript)
-            setShowDetails(false)
+            setShowDetails(true)
 
-            setVoiceMessage('Voice report captured successfully.')
+            setVoiceMessage(
+                'Telugu patient report captured successfully.'
+            )
+
+            console.log('Patient voice report:', transcript)
         }
 
         recognition.onerror = () => {
-            setVoiceMessage('Unable to capture voice. Please try again.')
+            setVoiceMessage(
+                'Microphone error. Please check microphone permission and try again.'
+            )
             setListening(false)
         }
 
@@ -358,218 +371,49 @@ function DriverPage() {
 
         recognitionRef.current = recognition
 
+        setPatientReport('')
+        setShowDetails(false)
         setListening(true)
-        setVoiceMessage('Listening to patient details...')
+
+        setVoiceMessage('Listening... Speak patient details in Telugu.')
 
         try {
             recognition.start()
-        } catch {
+        } catch (error) {
+            console.error('Speech recognition error:', error)
             setListening(false)
             setVoiceMessage('Unable to start microphone. Please try again.')
         }
     }
+
 
     // ==============================
     // HOME PAGE
     // ==============================
 
     const renderHome = () => (
-        <>
-
-            {/* Patient Report */}
-
-            {patientReport && (
-                <section className="bg-white border border-blue-100 rounded-2xl shadow-sm overflow-hidden">
-
-                    <button
-                        onClick={() => setShowDetails(!showDetails)}
-                        className="w-full p-4 flex items-center gap-3 text-left"
-                    >
-
-                        <div className="bg-blue-50 text-blue-600 p-3 rounded-xl">
-                            <Activity size={23} />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-sm">
-                                    Patient Report
-                                </h3>
-
-                                <span className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded-full font-semibold">
-                                    CAPTURED
-                                </span>
-                            </div>
-
-                            <p className="text-xs text-slate-500 mt-1 truncate">
-                                {patientReport}
-                            </p>
-
-                        </div>
-
-                        {showDetails
-                            ? <ChevronDown size={20} />
-                            : <ChevronRight size={20} />
-                        }
-
-                    </button>
-
-                    {showDetails && (
-                        <div className="border-t border-slate-100 p-4 space-y-3">
-
-                            <p className="text-xs text-slate-500 font-semibold uppercase">
-                                Recorded patient information
-                            </p>
-
-                            <p className="text-sm text-slate-700 leading-6">
-                                {patientReport}
-                            </p>
-
-                            <div className="bg-amber-50 text-amber-800 rounded-xl p-3 text-xs leading-5">
-                                This report is currently stored only in this screen.
-                                Backend forwarding will be implemented later.
-                            </div>
-
-                        </div>
-                    )}
-
-                </section>
-            )}
-
-            {/* Emergency Status */}
-
-            <section className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-
-                <div className="flex justify-between items-center">
-
-                    <div>
-                        <p className="text-xs text-slate-500 font-medium">
-                            CURRENT STATUS
-                        </p>
-
-                        <h2 className="text-lg font-bold mt-1">
-                            Emergency Response
-                        </h2>
-                    </div>
-
-                    <span className="bg-green-50 text-green-700 text-xs px-3 py-1.5 rounded-full font-semibold">
-                        READY
-                    </span>
-
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-3 mt-4 flex items-center gap-3">
-
-                    <div className="bg-red-50 text-red-600 p-2.5 rounded-xl">
-                        <Ambulance size={23} />
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-bold">
-                            {driverProfile.ambulanceNumber}
-                        </p>
-
-                        <p className="text-xs text-slate-500">
-                            Ambulance vehicle
-                        </p>
-                    </div>
-
-                </div>
-
-            </section>
-
-            {/* Journey Details */}
-
-            <section className="grid grid-cols-2 gap-3">
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                    <Clock3 size={19} className="text-blue-600" />
-
-                    <p className="text-xs text-slate-500 mt-3">
-                        Hospital ETA
-                    </p>
-
-                    <h3 className="text-xl font-bold mt-1">
-                        -- min
-                    </h3>
-
-                    <p className="text-[11px] text-slate-400 mt-1">
-                        Not available
-                    </p>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                    <Hospital size={19} className="text-red-600" />
-
-                    <p className="text-xs text-slate-500 mt-3">
-                        Destination
-                    </p>
-
-                    <h3 className="text-base font-bold mt-1">
-                        Not selected
-                    </h3>
-
-                    <p className="text-[11px] text-slate-400 mt-1">
-                        Hospital
-                    </p>
-                </div>
-
-            </section>
-
-            {/* Traffic Coordination */}
-
-            <section className="bg-white border border-slate-200 rounded-2xl p-4">
-
-                <div className="flex items-center gap-3">
-
-                    <div className="bg-blue-50 text-blue-600 p-3 rounded-xl">
-                        <ShieldCheck size={22} />
-                    </div>
-
-                    <div className="flex-1">
-                        <h3 className="text-sm font-bold">
-                            Traffic Coordination
-                        </h3>
-
-                        <p className="text-xs text-slate-500 mt-1">
-                            Police clearance updates
-                        </p>
-                    </div>
-
-                    <span className="text-xs text-slate-400">
-                        Waiting
-                    </span>
-
-                </div>
-
-            </section>
-
-            {/* Voice Instructions */}
-
-            <section className="bg-slate-900 text-white rounded-2xl p-4">
-
-                <div className="flex items-center gap-3">
-
-                    <div className="bg-white/10 p-2.5 rounded-xl">
-                        <Mic size={22} />
-                    </div>
-
-                    <div>
-                        <h3 className="font-bold text-sm">
-                            Hands-free reporting
-                        </h3>
-
-                        <p className="text-xs text-slate-300 mt-1">
-                            Use the microphone to report patient condition.
-                        </p>
-                    </div>
-
-                </div>
-
-            </section>
-
-        </>
+        <HomePage
+            driverName={driverProfile.name}
+            driverPhoto={driverProfile.photo}
+            ambulanceNumber={driverProfile.ambulanceNumber}
+            isOnDuty={true}
+            patientReport={patientReport}
+            showDetails={showDetails}
+            onTogglePatientReport={() => setShowDetails(prev => !prev)}
+            hospitalETA="-- min"
+            destination="Not selected"
+            gpsStatus="Waiting for GPS"
+            emergencyStatus="READY"
+            trafficStatus="Waiting"
+            onStartEmergency={() => {
+                setVoiceMessage(
+                    'Emergency activation will be connected in the next phase.'
+                )
+            }}
+            onNotificationClick={() => {
+                setVoiceMessage('Notifications will be connected later.')
+            }}
+        />
     )
 
     // ==============================
@@ -577,53 +421,13 @@ function DriverPage() {
     // ==============================
 
     const renderRoute = () => (
-        <section className="space-y-4">
-
-            <div>
-                <h2 className="text-xl font-bold">
-                    My Route
-                </h2>
-
-                <p className="text-sm text-slate-500 mt-1">
-                    Ambulance navigation and hospital destination
-                </p>
-            </div>
-
-            <div className="h-72 bg-slate-200 rounded-2xl flex flex-col items-center justify-center gap-3">
-
-                <MapPin size={35} className="text-blue-600" />
-
-                <p className="font-semibold text-slate-700">
-                    Live map
-                </p>
-
-                <p className="text-xs text-slate-500">
-                    Map integration will be added later
-                </p>
-
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-4">
-
-                <div className="flex items-center gap-3">
-
-                    <Hospital className="text-red-600" />
-
-                    <div>
-                        <p className="text-sm font-bold">
-                            Hospital destination
-                        </p>
-
-                        <p className="text-xs text-slate-500">
-                            Not selected
-                        </p>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
+        <RoutePage
+            onStartNavigation={() => {
+                setVoiceMessage(
+                    'Live navigation will be connected in the next phase.'
+                )
+            }}
+        />
     )
 
     // ==============================
@@ -910,41 +714,22 @@ function DriverPage() {
 
             {/* MAIN CONTENT */}
 
-            <main className="max-w-lg mx-auto px-4 pt-4 space-y-4">
-
-                {activeTab === 'home' && (
-                    <>
-                        <div className="flex items-center justify-between">
-
-                            <div>
-                                <p className="text-xs text-slate-500">
-                                    Welcome back,
-                                </p>
-
-                                <h2 className="text-xl font-bold">
-                                    {driverProfile.name}
-                                </h2>
-                            </div>
-
-                            <button className="p-2.5 bg-white border border-slate-200 rounded-xl">
-                                <Bell size={19} className="text-slate-600" />
-                            </button>
-
-                        </div>
-
-                        {renderHome()}
-                    </>
-                )}
+            <main
+                className={
+                    activeTab === 'home'
+                        ? 'w-full'
+                        : 'max-w-lg mx-auto px-4 pt-4 space-y-4'
+                }
+            >
+                {activeTab === 'home' && renderHome()}
 
                 {activeTab === 'route' && renderRoute()}
 
                 {activeTab === 'profile' && renderProfile()}
 
                 {/* STATUS MESSAGE */}
-
                 {voiceMessage && (
                     <div className="fixed bottom-24 left-4 right-4 max-w-lg mx-auto bg-slate-900 text-white rounded-xl p-3 flex items-center justify-between gap-3 shadow-xl z-50">
-
                         <p className="text-xs">
                             {voiceMessage}
                         </p>
@@ -952,10 +737,8 @@ function DriverPage() {
                         <button onClick={() => setVoiceMessage('')}>
                             <X size={17} />
                         </button>
-
                     </div>
                 )}
-
             </main>
 
             {/* LIVE CAMERA MODAL */}
